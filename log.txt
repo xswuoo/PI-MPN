@@ -1,0 +1,6 @@
+Epoch: 1, Steps: 31 | Train Loss: 1.0176471 Vali Loss: 5.7270114 Test Loss: 6.2792529
+Epoch: 1, Steps: 31 | Train Loss: 1.0176369 Vali Loss: 5.7247053 Test Loss: 6.2752496
+test_PIMPN_sl5_pl1_ebtimeF_test_0  
+mse:138.32752990722656, mae:6.152798652648926
+Evaluate best model on test data for horizon 1, Test MAE: 6.1528, Test MAPE: 0.3463, Test RMSE: 11.7613  
+
