@@ -1,10 +1,10 @@
 # PI-MPN  
   
-This is a PyTorch implementation of **Physics-Informed Mobility Perception Networks for Origin-Destination Flow Prediction and Human Mobility Interpretation**.  
-  
+This is a PyTorch implementation of **Physics-Informed Mobility Perception Networks for Origin-Destination Flow Prediction and Human Mobility Interpretation**. 
+
 ![Model Overview](fig/model.png) 
 
-<p style="text-align: center;"><strong>Figure 1.</strong> Overall architecture of PI-MPN.</p>
+<p style="text-align: center;"><strong>Figure 1.</strong> Overall architecture of PI-MPN.</p>  
 
 ## Get Started  
   
