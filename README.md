@@ -4,7 +4,7 @@ This is a PyTorch implementation of **Physics-Informed Mobility Perception Netwo
   
 ![Model Overview](fig/model.png) 
 
-<p style="text-align: center;"><strong>Figure 1. Overall architecture of PI-MPN.</strong></p>
+<p style="text-align: center;"><strong>Figure 1.</strong> Overall architecture of PI-MPN.</p>
 
 ## Get Started  
   
