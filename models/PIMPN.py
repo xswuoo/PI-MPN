@@ -2,6 +2,7 @@ from layers.Mix import *
 from layers.Embed import *
 from torchdiffeq import odeint as odeint
 
+
 class boundarypad(nn.Module):
     def __init__(self):
         super().__init__()
@@ -132,68 +133,65 @@ class Model(nn.Module):
         self.num_nodes = configs.num_nodes
         self.num_categories = configs.num_categories
         self.dropout = configs.dropout
-        self.skip_channels = configs.skip_channels
+        self.res_channels = configs.res_channels
         self.end_channels = configs.end_channels
         self.layers = configs.n_layers
+        self.seq_length = configs.seq_len
+        self.pred_len = configs.pred_len
 
         self.residual_convs = nn.ModuleList()
         self.line = nn.ModuleList()
-        self.skip1 = nn.ModuleList()
-        self.skip2 = nn.ModuleList()
-        self.skip3 = nn.ModuleList()
-        self.skip4 = nn.ModuleList()
+        self.res1 = nn.ModuleList()
+        self.res2 = nn.ModuleList()
+        self.res3 = nn.ModuleList()
+        self.res4 = nn.ModuleList()
         self.norm = nn.ModuleList()
-
         self.estimation_gate = nn.ModuleList()
         self.tc_enc = nn.ModuleList()
         self.sc_enc = nn.ModuleList()
-
-        self.seq_length = configs.seq_len
-        self.pred_len = configs.pred_len
 
         self.idx = torch.arange(int(self.num_pairs)).to(self.device)
         self.gc = graph_constructor(self.num_pairs, subgraph_size, node_dim, self.device, alpha=tanhalpha,
                                     static_feat=static_feat)
         self.st_emb = st_embedding(self.num_pairs, self.num_categories, node_emb_dim, residual_channels,
                                    static_feat=static_feat)
-        self.skip0 = nn.Conv2d(in_channels=in_dim, out_channels=self.skip_channels,
-                               kernel_size=(1, self.seq_length), bias=True)
+        self.res0 = nn.Conv2d(in_channels=in_dim, out_channels=self.res_channels,
+                              kernel_size=(1, self.seq_length), bias=True)
 
-        kernel_size = 7
         new_dilation = 1
         for j in range(1, self.layers + 1):
-
             self.norm.append(
                 LayerNorm((residual_channels, self.num_pairs, self.seq_length),
                           elementwise_affine=layer_norm_affline))
 
             new_dilation *= dilation_exponential
 
-
             self.estimation_gate.append(EstimationGate(node_emb_dim,
                                                        4, 64, self.dropout))
 
-            self.tc_enc.append(tc_encoder(residual_channels, conv_channels, new_dilation, self.seq_length, self.dropout))
+            self.tc_enc.append(
+                tc_encoder(residual_channels, conv_channels, new_dilation, self.seq_length, self.dropout))
             if self.sc_true:
                 self.sc_enc.append(sc_encoder(conv_channels, residual_channels, gcn_depth, self.dropout, propalpha))
 
             self.line.append(nn.Linear(1, self.seq_length))
-            self.skip1.append(
-                nn.Conv2d(in_channels=residual_channels, out_channels=self.skip_channels,
+            self.res1.append(
+                nn.Conv2d(in_channels=residual_channels, out_channels=self.res_channels,
                           kernel_size=(1, self.seq_length), bias=True))
-            self.skip2.append(
-                nn.Conv2d(in_channels=residual_channels, out_channels=self.skip_channels,
+            self.res2.append(
+                nn.Conv2d(in_channels=residual_channels, out_channels=self.res_channels,
                           kernel_size=(1, self.seq_length), bias=True))
-            self.skip3.append(nn.Conv2d(in_channels=conv_channels,
-                                        out_channels=self.skip_channels,
-                                        kernel_size=(1,self.seq_length)))
-            self.skip4.append(nn.Conv2d(in_channels=conv_channels,
-                                        out_channels=self.skip_channels,
-                                        kernel_size=(1,self.seq_length)))
+            self.res3.append(nn.Conv2d(in_channels=conv_channels,
+                                       out_channels=self.res_channels,
+                                       kernel_size=(1, self.seq_length)))
+            self.res4.append(nn.Conv2d(in_channels=conv_channels,
+                                       out_channels=self.res_channels,
+                                       kernel_size=(1, self.seq_length)))
             self.residual_convs.append(nn.Conv2d(in_channels=conv_channels,
                                                  out_channels=residual_channels,
                                                  kernel_size=(1, 1)))
-        self.end_conv_1 = nn.Conv2d(in_channels=self.skip_channels * self.layers,
+
+        self.end_conv_1 = nn.Conv2d(in_channels=self.res_channels * self.layers,
                                     out_channels=self.end_channels,
                                     kernel_size=(1, 1),
                                     bias=True)
@@ -215,11 +213,14 @@ class Model(nn.Module):
             self.vel_att = Self_attn_conv_reg(vel_input_channels, 2)
             self.gamma = nn.Parameter(torch.tensor([0.1]))
 
-    def pde(self, t, vs):
-        ds = vs[:, -self.out_ch:, :, :].float().view(-1, self.out_ch, *vs.shape[2:]).float()
-        v = vs[:, :2 * self.out_ch, :, :].float().view(-1, self.out_ch, *vs.shape[2:]).float()
+    def diffusion(self, time_step, velocity_states):
+        diffusion_states = velocity_states[:, -self.out_ch:, :, :].float().view(-1, self.out_ch,
+                                                                                *velocity_states.shape[2:]).float()
+        velocity_vectors = velocity_states[:, :2 * self.out_ch, :, :].float().view(-1, self.out_ch,
+                                                                                   *velocity_states.shape[2:]).float()
 
-        t_emb = ((t * 100) % 24).view(1, 1, 1, 1).expand(ds.shape[0], 1, ds.shape[2], ds.shape[3])
+        t_emb = ((time_step * 100) % 24).view(1, 1, 1, 1).expand(diffusion_states.shape[0], 1,
+                                                                 diffusion_states.shape[2], diffusion_states.shape[3])
         sin_t_emb = torch.sin(torch.pi * t_emb / 12 - torch.pi / 2)
         cos_t_emb = torch.cos(torch.pi * t_emb / 12 - torch.pi / 2)
 
@@ -229,26 +230,27 @@ class Model(nn.Module):
         day_emb = torch.cat([sin_t_emb, cos_t_emb], dim=1)
         seas_emb = torch.cat([sin_seas_emb, cos_seas_emb], dim=1)
 
-        ds_grad_x = torch.gradient(ds, dim=3)[0]
-        ds_grad_y = torch.gradient(ds, dim=2)[0]
-        nabla_u = torch.cat([ds_grad_x, ds_grad_y], dim=1)
+        diffusion_grad_x = torch.gradient(diffusion_states, dim=3)[0]
+        diffusion_grad_y = torch.gradient(diffusion_states, dim=2)[0]
+        nabla_velocity = torch.cat([diffusion_grad_x, diffusion_grad_y], dim=1)
 
-        comb_rep = torch.cat([t_emb / 24, day_emb, seas_emb, nabla_u, v, ds], dim=1)
+        combined_representation = torch.cat(
+            [t_emb / 24, day_emb, seas_emb, nabla_velocity, velocity_vectors, diffusion_states], dim=1)
 
         if self.use_att:
-            dv = self.vel_f(comb_rep) + self.gamma * self.vel_att(comb_rep)
+            velocity_change = self.vel_f(combined_representation) + self.gamma * self.vel_att(combined_representation)
         else:
-            dv = self.vel_f(comb_rep)
+            velocity_change = self.vel_f(combined_representation)
 
-        v_x, v_y = v.chunk(2, dim=1)
+        v_x, v_y = velocity_vectors.chunk(2, dim=1)
 
-        adv1 = (v_x * ds_grad_x).sum(dim=1, keepdim=True) + (v_y * ds_grad_y).sum(dim=1, keepdim=True)
-        adv2 = ds * (torch.gradient(v_x, dim=3)[0].sum(dim=1, keepdim=True) +
-                     torch.gradient(v_y, dim=2)[0].sum(dim=1, keepdim=True))
+        adv1 = (v_x * diffusion_grad_x).sum(dim=1, keepdim=True) + (v_y * diffusion_grad_y).sum(dim=1, keepdim=True)
+        adv2 = diffusion_states * (torch.gradient(v_x, dim=3)[0].sum(dim=1, keepdim=True) +
+                                   torch.gradient(v_y, dim=2)[0].sum(dim=1, keepdim=True))
 
-        ds1 = adv1 + adv2
-        dvs = dv + ds1 / 24
-        return dvs.view_as(vs[:, -self.out_ch:, :, :])
+        diffusion_update = adv1 + adv2
+        updated_velocity = velocity_change + diffusion_update / 24
+        return updated_velocity.view_as(velocity_states[:, -self.out_ch:, :, :])
 
     def io2od_flow(self, od_flow_mask, index):
         batch_size, pred_len = od_flow_mask.shape[:2]
@@ -281,7 +283,7 @@ class Model(nn.Module):
         io_x_re[:] = io_result.gather(-1, indices)
         return io_x_re
 
-    def neural_diffusion(self,x,columns_to_observe,local_stamp,indices):
+    def neural_diffusion(self, x, columns_to_observe, local_stamp, indices):
         step = 2
         od_x = x.squeeze_(dim=3)
         indices = indices[:, 0:1]
@@ -296,7 +298,7 @@ class Model(nn.Module):
 
         field = self.construct_field(io_x[:, 0], indices, self.field_size)
 
-        pde_rhs = lambda t, vs: self.pde(t, vs)
+        pde_rhs = lambda t, vs: self.diffusion(t, vs)
         io_result = odeint(pde_rhs, field, t, method=self.method, atol=1e-6, rtol=1e-3)
         io_result = io_result[0:len(io_result):step]
         io_result = io_result.transpose(0, 1)
@@ -304,7 +306,6 @@ class Model(nn.Module):
         io_x_re = self.re_construct_field(io_result, indices, self.field_size)
         io_x += io_x_re
         return io_x
-
 
     def forward(self, input, predefined_A, local_poi, local_stamp, columns_to_observe, indices, idx=None):
         # ==================== Prepare Input Data ==================== #
@@ -316,26 +317,26 @@ class Model(nn.Module):
         adp = self.gc(self.idx) if self.buildA_true else predefined_A
         # ========================= Spatio-Temporal Encoder ========================== #
         for i in range(self.layers):
-            skip = self.skip0(F.dropout(input, self.dropout, training=self.training))
+            res = self.res0(F.dropout(input, self.dropout, training=self.training))
             x = history_data if i == 0 else history_data + torch.sigmoid(x)
-            skip += self.skip1[i](x)
+            res += self.res1[i](x)
 
             gated_x, gated_x_res = self.estimation_gate[i](node_emb_od, time_in_day_emb,
-                                                         day_in_week_emb, x)
-            skip += self.skip2[i](gated_x)
+                                                           day_in_week_emb, x)
+            res += self.res2[i](gated_x)
 
             tc_x, tc_x_res = self.tc_enc[i](gated_x_res)
-            # skip += self.skip3[i](tc_x)
+            # res += self.res3[i](tc_x)
 
             sc_x = self.sc_enc[i](tc_x_res, adp) if self.sc_true else self.residual_convs[i](tc_x_res)
-            skip += self.skip4[i](sc_x)
+            res += self.res4[i](sc_x)
             x = self.norm[i](sc_x, self.idx)
 
-            predict.append(skip)
+            predict.append(res)
         # ========================= Output Module ========================== #
-        skip = torch.cat(predict, dim=1)
-        forecast_od = self.end_conv_2(F.relu(self.end_conv_1(F.relu(skip))))
+        res = torch.cat(predict, dim=1)
+        forecast_od = self.end_conv_2(F.relu(self.end_conv_1(F.relu(res))))
         # ========================= Diffusion Process ========================== #
-        forecast_io = self.neural_diffusion(forecast_od,columns_to_observe,local_stamp,indices)
+        forecast_io = self.neural_diffusion(forecast_od, columns_to_observe, local_stamp, indices)
 
         return forecast_od, forecast_io

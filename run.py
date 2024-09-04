@@ -1,10 +1,10 @@
 import argparse
-import os
 import torch
 from exp.exp_main import Exp_Main
 import random
 import time
 import numpy as np
+
 
 def str_to_bool(value):
     if isinstance(value, bool):
@@ -15,19 +15,21 @@ def str_to_bool(value):
         return True
     raise ValueError(f'{value} is not a valid boolean value')
 
+
 def main():
     fix_seed = 0
     random.seed(fix_seed)
     torch.manual_seed(fix_seed)
     np.random.seed(fix_seed)
 
-    parser = argparse.ArgumentParser(description='Physics-Informed Mobility Perception Networks for Origin-Destination Flow Prediction and Human Mobility Interpretation')
+    parser = argparse.ArgumentParser(
+        description='Physics-Informed Mobility Perception Networks for Origin-Destination Flow Prediction and Human Mobility Interpretation')
 
     # basic config
     parser.add_argument('--is_training', type=int, default=1, help='status')
     parser.add_argument('--model_id', type=str, default='test', help='model id')
     parser.add_argument('--model', type=str, default='PIMPN',
-                        help='model name, options: [ , , ]')
+                        help='model name, options: [PIMPN , , ]')
 
     # data loader
     parser.add_argument('--data', type=str, default='custom', help='dataset type')
@@ -47,7 +49,7 @@ def main():
     parser.add_argument('--num_nodes', type=int, default=333, help='number of nodes/variables')
     parser.add_argument('--num_pairs', type=int, default=378, help='number of valid od pairs')
     parser.add_argument('--num_categories', type=int, default=49, help='number of categories')
-    parser.add_argument('--n_layers', type=int, default=4, help='num of layers')#1111111111
+    parser.add_argument('--n_layers', type=int, default=2, help='num of layers')
     parser.add_argument('--dropout', type=float, default=0.2, help='dropout')
     parser.add_argument('--embed', type=str, default='timeF',
                         help='time features encoding, options:[timeF, fixed, learned]')
@@ -60,20 +62,20 @@ def main():
     parser.add_argument('--use_poi', type=str_to_bool, default=True, help='whether to use poi information')
     parser.add_argument('--use_phy', type=str_to_bool, default=True, help='whether to use physical diffusion process')
     parser.add_argument('--use_att', type=str_to_bool, default=True, help='whether to use attention')
-    parser.add_argument('--skip_channels', type=int, default=64, help='skip channels')
+    parser.add_argument('--res_channels', type=int, default=64, help='res channels')
     parser.add_argument('--end_channels', type=int, default=512, help='end channels')
 
     # optimization
     parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
     parser.add_argument('--itr', type=int, default=1, help='experiments times')
-    parser.add_argument('--train_epochs', type=int, default=1, help='train epochs')#
+    parser.add_argument('--train_epochs', type=int, default=1, help='train epochs')  #
     parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
     parser.add_argument('--patience', type=int, default=10, help='early stopping patience')
     parser.add_argument('--learning_rate', type=float, default=0.002, help='optimizer learning rate')
     parser.add_argument('--weight_decay', type=float, default=1e-5, help='optimizer learning rate')
-    parser.add_argument('--lambda_', type=float, default=5e-3, help='phy loss rate')#5e-3
+    parser.add_argument('--lambda_', type=float, default=5e-3, help='phy loss rate')
     parser.add_argument('--cl', type=str_to_bool, default=True, help='whether to do curriculum learning')
-    parser.add_argument('--cl_steps', type=int, default=100, help='whether to do curriculum learning')
+    parser.add_argument('--cl_steps', type=int, default=100, help='curriculum learning steps')
     parser.add_argument('--des', type=str, default='test', help='exp description')
     parser.add_argument('--lradj', type=str, default='type2', help='adjust learning rate')
 
@@ -123,11 +125,11 @@ def main():
     else:
         ii = 0
         setting = '{}_{}_sl{}_pl{}_eb{}_{}_{}'.format(args.model_id,
-                args.model,
-                args.seq_len,
-                args.pred_len,
-                args.embed,
-                args.des, ii)
+                                                      args.model,
+                                                      args.seq_len,
+                                                      args.pred_len,
+                                                      args.embed,
+                                                      args.des, ii)
 
         exp = Exp(args)  # set experiments
         print('>>>>>>>testing : {}<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<'.format(setting))

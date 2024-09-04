@@ -4,9 +4,6 @@ import os
 from torch.utils.data import Dataset
 from utils.tools import StandardScaler
 from utils.timefeatures import time_features
-import warnings
-
-warnings.filterwarnings('ignore')
 
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, flag='train', size=None,

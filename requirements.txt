@@ -1,5 +1,5 @@
+numpy
 pandas
 scikit-learn
-torchvision
-numpy
-matplotlib
+torch
+torchdiffeq

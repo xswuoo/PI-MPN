@@ -97,7 +97,6 @@ class Exp_Main(Exp_Basic):
                 batch_y = scaler.inverse_transform(batch_y)
                 loss = MAE(outputs, batch_y)
 
-
                 inflow_y, outflow_y = self._io2od_flow(batch_y, columns_to_observe)
                 y_io = torch.cat((inflow_y, outflow_y), dim=2)
                 loss_IO = MAE(outputs_io, y_io)
@@ -314,13 +313,15 @@ class Exp_Main(Exp_Basic):
         trues_d = trues_d.reshape(-1, trues_d.shape[-2], trues_d.shape[-1])
 
         mae_o, mse_o, rmse_o, mape_o, r_2_o = metric(preds_o, trues_o)
-        print('mae_o:{:.4f}, mse_o:{:.4f}, rmse_o:{:.4f}, mape_o:{:.4f}, r_2_o:{:.4f}'.format(mae_o, mse_o, rmse_o, mape_o, r_2_o))
+        print('mae_o:{:.4f}, mse_o:{:.4f}, rmse_o:{:.4f}, mape_o:{:.4f}, r_2_o:{:.4f}'.format(mae_o, mse_o, rmse_o,
+                                                                                              mape_o, r_2_o))
         np.save(folder_path + 'metrics_o.npy', np.array([mae_o, mse_o, rmse_o, mape_o, r_2_o]))
         np.save(folder_path + 'pred_o.npy', preds_o)
         np.save(folder_path + 'true_o.npy', trues_o)
 
         mae_d, mse_d, rmse_d, mape_d, r_2_d = metric(preds_d, trues_d)
-        print('mae_d:{:.4f}, mse_d:{:.4f}, rmse_d:{:.4f}, mape_d:{:.4f}, r_2_d:{:.4f}'.format(mae_d, mse_d, rmse_d, mape_d, r_2_d))
+        print('mae_d:{:.4f}, mse_d:{:.4f}, rmse_d:{:.4f}, mape_d:{:.4f}, r_2_d:{:.4f}'.format(mae_d, mse_d, rmse_d,
+                                                                                              mape_d, r_2_d))
         np.save(folder_path + 'metrics_d.npy', np.array([mae_d, mse_d, rmse_d, mape_d, r_2_d]))
         np.save(folder_path + 'pred_d.npy', preds_d)
         np.save(folder_path + 'true_d.npy', trues_d)
