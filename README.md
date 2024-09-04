@@ -3,6 +3,8 @@ PI-MPN
 
 Physics-Informed Mobility Perception Networks for Origin-Destination Flow Prediction and Human Mobility Interpretation.<be>
 
+![](https://github.com/xuesong-wu/PI-MPN/fig/model.png)  
+
 Get Started
 ---
 
